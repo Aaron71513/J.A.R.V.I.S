@@ -1,0 +1,101 @@
+jarvis-ai/
+├── README.md
+├── requirements.txt
+├── jarvis.py
+└── intents.json
+import speech_recognition as sr
+import pyttsx3
+import json
+import nltk
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+
+# Download necessary NLTK data
+nltk.download('punkt')
+nltk.download('stopwords')
+nltk.download('wordnet')
+
+class JarvisAI:
+    def __init__(self):
+        self.recognizer = sr.Recognizer()
+        self.engine = pyttsx3.init()
+        self.lemmatizer = WordNetLemmatizer()
+        self.stop_words = set(stopwords.words('english'))
+        
+        with open('intents.json') as file:
+            self.intents = json.load(file)
+
+    def speak(self, text):
+        self.engine.say(text)
+        self.engine.runAndWait()
+
+    def listen(self):
+        with sr.Microphone() as source:
+            print("Listening...")
+            audio = self.recognizer.listen(source)
+            try:
+                text = self.recognizer.recognize_google(audio)
+                print(f"You said: {text}")
+                return text.lower()
+            except:
+                print("Sorry, I didn't catch that.")
+                return ""
+
+    def process_input(self, text):
+        tokens = word_tokenize(text)
+        tokens = [self.lemmatizer.lemmatize(word) for word in tokens if word not in self.stop_words]
+        
+        for intent in self.intents['intents']:
+            for pattern in intent['patterns']:
+                if all(word in tokens for word in word_tokenize(pattern.lower())):
+                    return intent['responses']
+        
+        return ["I'm not sure how to respond to that."]
+
+    def run(self):
+        self.speak("Hello, I am Jarvis. How can I assist you?")
+        
+        while True:
+            user_input = self.listen()
+            
+            if user_input == "goodbye":
+                self.speak("Goodbye! Have a great day.")
+                break
+            
+            responses = self.process_input(user_input)
+            response = responses[0]  # For simplicity, we'll just use the first response
+            self.speak(response)
+
+if __name__ == "__main__":
+    jarvis = JarvisAI()
+    jarvis.run()
+{
+  "intents": [
+    {
+      "tag": "greeting",
+      "patterns": ["Hello", "Hi", "Hey", "Good day"],
+      "responses": ["Hello! How can I help you?", "Hi there! What can I do for you?"]
+    },
+    {
+      "tag": "goodbye",
+      "patterns": ["Bye", "See you later", "Goodbye"],
+      "responses": ["Goodbye! Have a great day.", "See you later!"]
+    },
+    {
+      "tag": "thanks",
+      "patterns": ["Thank you", "Thanks", "That's helpful"],
+      "responses": ["You're welcome!", "Happy to help!"]
+    },
+    {
+      "tag": "time",
+      "patterns": ["What time is it?", "Tell me the time"],
+      "responses": ["I'm sorry, I don't have that capability yet."]
+    },
+    {
+      "tag": "weather",
+      "patterns": ["What's the weather like?", "Is it going to rain?"],
+      "responses": ["I'm sorry, I don't have access to weather information."]
+    }
+  ]
+}
